@@ -1,4 +1,6 @@
 const fs = require("fs")
+const logFileName = 'log1.txt'
+const logFilePath = __dirname + '/logs/' + logFileName
 
 const express = require('express')
 const bodyParser = require('body-parser')
@@ -72,6 +74,9 @@ class Bin {
         this.lastUpdateTimeRaw = Date.now()
 
         WebClients.forEach(e => {e.updateBins()})
+
+
+        logLineToFile(`${this.lastUpdateTimeRaw}  ;${this.depth};${this.lattitude};${this.longitude}`, this.mac)
     }
 
     exportData() {
@@ -111,3 +116,15 @@ const port = 80
 server.listen(port, () => {
     console.log(`listening on port \x1b[34m${port}\x1b[0m`)
 });
+
+
+
+function logLineToFile(line, mac) {
+    let path = __dirname + '/logs/' + mac + '.txt'
+
+    if (!fs.existsSync(path)) {
+        fs.writeFileSync(path, '')
+    }
+
+    fs.appendFileSync(path, line + '\n')
+}
