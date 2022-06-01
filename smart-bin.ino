@@ -37,7 +37,7 @@ String mode;
 const char* ssid     = STASSID;
 const char* password = STAPSK;
 
-const char* host = "192.168.64.84";
+const char* host = "192.168.105.84";
 const uint16_t port = 80;
 String myMac;
 
@@ -179,10 +179,10 @@ bool logDataToServer() {
 long duration, distance;
 
   Serial.println("logging data to server");
-  //Serial.print("connecting to ");
-  //Serial.print(host);
-  //Serial.print(':');
-  //Serial.println(port);
+  Serial.print("connecting to ");
+  Serial.print(host);
+  Serial.print(':');
+  Serial.println(port);
 
   // Use WiFiClient class to create TCP connections
   WiFiClient client;
