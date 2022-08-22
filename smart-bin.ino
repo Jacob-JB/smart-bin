@@ -11,12 +11,16 @@
 // power saving
 #include <ESP.h>
 
+// EEPROM
+#include <EEPROM.h>
+const int readNum = 1;
+
 // gps
 SoftwareSerial hwdSerial;
 
 FuGPS fuGPS(hwdSerial);
 
-char fixMode;
+char fixMode = '0';
 
 String lattitude;
 String lattitudeDirection;
@@ -27,8 +31,8 @@ String mode;
 
 // wifi
 #ifndef STASSID
-#define STASSID "Jacob"
-#define STAPSK  "hihihiih"
+#define STASSID "CodeClub"
+#define STAPSK  ""
 #endif
 
 #define trigPin 12
@@ -37,8 +41,8 @@ String mode;
 const char* ssid     = STASSID;
 const char* password = STAPSK;
 
-const char* host = "192.168.105.84";
-const uint16_t port = 80;
+const char* host = "192.168.1.7";
+const uint16_t port = 3000;
 String myMac;
 
 
@@ -121,34 +125,70 @@ void loop() {
       }
     }
 
-    if (sentence == "GPGGA" && fixMode == *"3") {
-      Serial.println("attained coordinates");
+    if (sentence == "GPGGA") {
 
-      Serial.print("lattitude is ");
-      Serial.print(lattitude);
-      Serial.println(lattitudeDirection);
+      EEPROM.begin(readNum + 1);
+      int measureStage = EEPROM.read(0);
 
-      Serial.print("longitude is ");
-      Serial.print(longitude);
-      Serial.println(longitudeDirection);
+      if (fixMode == '3') {
+        Serial.println("gps lock");
 
-      connectToWifi();
+        Serial.print("lattitude is ");
+        Serial.print(lattitude);
+        Serial.println(lattitudeDirection);
 
-      int attempts = 0;
-      while (!logDataToServer()) {
-        if (attempts >= 5) {
-          Serial.println("failed to log to server");
-          break;
-        } else {
-          Serial.println("retrying");
-          attempts ++;
+        Serial.print("longitude is ");
+        Serial.print(longitude);
+        Serial.println(longitudeDirection);
+
+        Serial.print("measuring stage ");
+        Serial.println(measureStage);
+        if (measureStage < readNum) {
+          measureStage ++;
+
+          //measure distance
+          digitalWrite(trigPin, LOW);
+          delayMicroseconds(2);
+          digitalWrite(trigPin, HIGH);
+          delayMicroseconds(10);
+          digitalWrite(trigPin, LOW);
+          int distance = (pulseIn(echoPin, HIGH)/2) / 29.1;
+          Serial.print("measured ");
+          Serial.println(distance);
+
+          EEPROM.write(measureStage, distance);
+
         }
+
+        if (measureStage >= readNum) {
+          measureStage = 0;
+
+          connectToWifi();
+
+          int attempts = 0;
+          while (!logDataToServer()) {
+            if (attempts >= 5) {
+              Serial.println("failed to log to server");
+              break;
+            } else {
+              Serial.println("retrying");
+              attempts ++;
+            }
+          }
+        }
+
+        EEPROM.write(0, measureStage);
+        EEPROM.commit();
+
+      } else if (fixMode == '1') {
+        EEPROM.write(0, 0);
+        EEPROM.commit();
+        Serial.println("no gps lock");
       }
-
-
-      Serial.println("sleeping for 30 seconds...zzz");
-      ESP.deepSleep(30e6, WAKE_RF_DEFAULT);
-
+      if (fixMode != '0') {
+        Serial.println("sleeping for 5 seconds...zzz");
+        ESP.deepSleep(5e6, measureStage == readNum - 2 ? WAKE_RFCAL : WAKE_NO_RFCAL);
+      }
     }
   }
 
@@ -176,8 +216,6 @@ void connectToWifi() {
 
 
 bool logDataToServer() {
-long duration, distance;
-
   Serial.println("logging data to server");
   Serial.print("connecting to ");
   Serial.print(host);
@@ -206,29 +244,24 @@ long duration, distance;
   //Serial.print("this mac address: ");
   //Serial.println(myMac);
 
-  //Serial.print("getting distance... ");
-  //measure bin usage
-  digitalWrite(trigPin, LOW);  // Added this line
-  delayMicroseconds(2); // Added this line
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10); // Added this line
-  digitalWrite(trigPin, LOW);
-  duration = pulseIn(echoPin, HIGH);
-  distance = (duration/2) / 29.1; 
-  //Serial.println(distance);
-
   //build data string to send to server
-  HTTPReqData = "Depth=";
-  HTTPReqData.concat(String(distance, 10));
-  HTTPReqData.concat("&Lat=");
+  HTTPReqData = "Lat=";
   HTTPReqData.concat(lattitude);
   HTTPReqData.concat(lattitudeDirection);
   HTTPReqData.concat("&Lon=");
   HTTPReqData.concat(longitude);
   HTTPReqData.concat(longitudeDirection);
-  HTTPReqData.concat("&BATT=100%&LID=ON");
   HTTPReqData.concat("&MAC=");
   HTTPReqData.concat(myMac);
+  HTTPReqData.concat("&Len=");
+  HTTPReqData.concat(readNum);
+  for (int i = 0; i < readNum; i++) {
+    HTTPReqData.concat("&Depth");
+    HTTPReqData.concat(i);
+    HTTPReqData.concat("=");
+    HTTPReqData.concat(String(EEPROM.read(i + 1), 10));
+  }
+  //HTTPReqData.concat(String(distance, 10));
 
   // make http request
   client.println("POST / HTTP/1.1");

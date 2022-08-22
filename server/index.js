@@ -1,6 +1,4 @@
 const fs = require("fs")
-const logFileName = 'log1.txt'
-const logFilePath = __dirname + '/logs/' + logFileName
 
 const express = require('express')
 const bodyParser = require('body-parser')
@@ -70,8 +68,8 @@ class Bin {
         }
 
         this.depth = postData.Depth
-        this.lastUpdated = time
-        this.lastUpdateTimeRaw = Date.now()
+        this.lastUpdated = getVisualTime()
+        this.lastUpdateTimeRaw = time
 
         WebClients.forEach(e => {e.updateBins()})
 
@@ -91,27 +89,36 @@ class Bin {
 }
 function getBinByMac(mac) {return bins.find(e => {return e.mac == mac})}
 
+new Bin("A MAC ADDRESS");
 
 app.post('/', (req, res) => {
-    const date = new Date()
-    const time = `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`
+    const time = Date.now()
 
-    console.log('post recieved at', time)
+    console.log('post recieved at', getVisualTime())
 
-    res.send(`LOOPDELAY=5000;TIME=${date};`)
-
+    res.send(`LOOPDELAY=5000;`)
 
     const data = {}
     Object.keys(req.body).forEach(e => {
         data[e] = req.body[e]
     })
 
-    if (!getBinByMac(data.MAC)) {new Bin(data.MAC)}
+    console.log(data)
 
-    getBinByMac(data.MAC).update(data, time)
+
+    if (!getBinByMac(data.MAC)) {new Bin(data.MAC)}
+    let bin = getBinByMac(data.MAC)
+
+    for (let i = 0; i < String(data.Len); i++) {
+        bin.update({
+            Lat: data.Lat,
+            Lon: data.Lon,
+            Depth: data[`Depth${i}`]
+        }, time)
+    }
 })
 
-const port = 80
+const port = 3000
 
 server.listen(port, () => {
     console.log(`listening on port \x1b[34m${port}\x1b[0m`)
@@ -127,4 +134,10 @@ function logLineToFile(line, mac) {
     }
 
     fs.appendFileSync(path, line + '\n')
+}
+
+
+function getVisualTime(date) {
+    date = date || new Date()
+    return `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`
 }
