@@ -31,8 +31,8 @@ String mode;
 
 // wifi
 #ifndef STASSID
-#define STASSID "CodeClub"
-#define STAPSK  ""
+#define STASSID "Jacob"
+#define STAPSK  "hihihiih"
 #endif
 
 #define trigPin 12
@@ -41,7 +41,7 @@ String mode;
 const char* ssid     = STASSID;
 const char* password = STAPSK;
 
-const char* host = "192.168.1.7";
+const char* host = "192.168.29.84";
 const uint16_t port = 3000;
 String myMac;
 

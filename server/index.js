@@ -89,7 +89,7 @@ class Bin {
 }
 function getBinByMac(mac) {return bins.find(e => {return e.mac == mac})}
 
-new Bin("A MAC ADDRESS");
+//new Bin("4C11AE35387");
 
 app.post('/', (req, res) => {
     const time = Date.now()

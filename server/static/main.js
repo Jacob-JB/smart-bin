@@ -19,13 +19,10 @@ function onLoad() {
             })
         ],
         view: new ol.View({
-            center: ol.proj.fromLonLat([37.41, 8.82]),
-            zoom: 4
+            center: ol.proj.fromLonLat([150.9335167, -33.7348637]),
+            zoom: 18.5
         })
     });
-
-    new BinPopup([37.41, 8.82]);
-    new BinPopup([0.0, 0.0]);
 }
 
 const socket = io()
@@ -42,10 +39,10 @@ socket.on('update bins', bins => {
 
     list.innerHTML = ''
 
-    bins.forEach(e => {
+    bins.forEach(bin => {
         let li = document.createElement('p')
-        li.innerHTML = Object.keys(e).reduce((p, key) => {
-            return p + `${key}: ${e[key]}<br>`
+        li.innerHTML = Object.keys(bin).reduce((p, key) => {
+            return p + `${key}: ${bin[key]}<br>`
         }, '')
         list.appendChild(li)
     })
@@ -55,7 +52,7 @@ socket.on('update bins', bins => {
     binPopups.slice().forEach(e => {e.remove()});
 
     bins.forEach(bin => {
-        new BinPopup([150.9335167, -33.7348637]);
+        new BinPopup([parseFloat(bin.Longitude), parseFloat(bin.Lattitude)], parseFloat(bin.Depth));
     });
 })
 
@@ -64,11 +61,16 @@ socket.on('update bins', bins => {
 
 const binPopups = [];
 class BinPopup {
-    constructor(lat_long) {
+    constructor(lat_long, depth) {
+
+        // a function that should encompass any depth of bin
+        let progress = Math.E**(-depth/50);
+
         this.element = document.createElement("div");
         this.element.innerHTML = `
-<p style="background-color: blue;">hello world</p>
-<div
+<div style="background-color: rgb(40, 40, 40); width: 40px; height: 15px;" class="bin_marker">
+        <div style="background-color: rgb(${ 255 * Math.min(2*progress, 1) }, ${ 255 * Math.min(-2*progress+2, 1) }, 0); height: 100%; width: ${progress * 100}%;"></div>
+</div>
         `;
 
         this.overlay = new ol.Overlay({
